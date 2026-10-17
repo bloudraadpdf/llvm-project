@@ -91,9 +91,12 @@ DWARFAddressRangesVector DWARFDebugRangeList::getAbsoluteRanges(
   // debug_addr can't use the max integer tombstone because that's used for the
   // base address specifier entry - so use max-1.
   uint64_t Tombstone = dwarf::computeTombstoneAddress(AddressSize) - 1;
+  bool DiscardedUnitBase =
+      BaseAddr && BaseAddr->Address == dwarf::computeTombstoneAddress(AddressSize);
   for (const RangeListEntry &RLE : Entries) {
     if (RLE.isBaseAddressSelectionEntry(AddressSize)) {
       BaseAddr = {RLE.EndAddress, RLE.SectionIndex};
+      DiscardedUnitBase = false;
       continue;
     }
 
@@ -107,7 +110,7 @@ DWARFAddressRangesVector DWARFDebugRangeList::getAbsoluteRanges(
     // base address selection entry in the same range list. It defaults to the
     // base address of the compilation unit if there is no such entry.
     if (BaseAddr) {
-      if (BaseAddr->Address == Tombstone)
+      if (DiscardedUnitBase || BaseAddr->Address == Tombstone)
         continue;
       E.LowPC += BaseAddr->Address;
       E.HighPC += BaseAddr->Address;
