@@ -348,16 +348,8 @@ unsigned DWARFVerifier::verifyDebugInfoCallSite(const DWARFDie &Die) {
     return 0;
 
   DWARFDie Curr = Die.getParent();
-  for (; Curr.isValid() && !Curr.isSubprogramDIE(); Curr = Curr.getParent()) {
-    if (Curr.getTag() == DW_TAG_inlined_subroutine) {
-      ErrorCategory.Report(
-          "Call site nested entry within inlined subroutine", [&]() {
-            error() << "Call site entry nested within inlined subroutine:";
-            Curr.dump(OS);
-          });
-      return 1;
-    }
-  }
+  while (Curr.isValid() && !Curr.isSubprogramDIE())
+    Curr = Curr.getParent();
 
   if (!Curr.isValid()) {
     ErrorCategory.Report(
@@ -368,20 +360,6 @@ unsigned DWARFVerifier::verifyDebugInfoCallSite(const DWARFDie &Die) {
     return 1;
   }
 
-  std::optional<DWARFFormValue> CallAttr = Curr.find(
-      {DW_AT_call_all_calls, DW_AT_call_all_source_calls,
-       DW_AT_call_all_tail_calls, DW_AT_GNU_all_call_sites,
-       DW_AT_GNU_all_source_call_sites, DW_AT_GNU_all_tail_call_sites});
-  if (!CallAttr) {
-    ErrorCategory.Report(
-        "Subprogram with call site entry has no DW_AT_call attribute", [&]() {
-          error()
-              << "Subprogram with call site entry has no DW_AT_call attribute:";
-          Curr.dump(OS);
-          Die.dump(OS, /*indent*/ 1);
-        });
-    return 1;
-  }
 
   return 0;
 }
