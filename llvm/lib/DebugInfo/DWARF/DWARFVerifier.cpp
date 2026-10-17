@@ -2291,9 +2291,7 @@ bool DWARFVerifier::verifyDebugStrOffsets(
          ++Index) {
       uint64_t OffOff = C.tell();
       uint64_t StrOff = DA.getAddress(C);
-      // check StrOff refers to the start of a string
-      if (StrOff == 0)
-        continue;
+      // String offsets may refer to a suffix of another string.
       if (StrData.size() <= StrOff) {
         ErrorCategory.Report(
             "String offset out of bounds of string section", [&]() {
@@ -2306,14 +2304,13 @@ bool DWARFVerifier::verifyDebugStrOffsets(
             });
         continue;
       }
-      if (StrData[StrOff - 1] == '\0')
+      if (StrData.find('\0', StrOff) != StringRef::npos)
         continue;
       ErrorCategory.Report(
           "Section contribution contains invalid string offset", [&]() {
             error() << formatv(
                 "{0}: contribution {1:X}: index {2:X}: invalid string "
-                "offset *{3:X} == {4:X}, is neither zero nor "
-                "immediately following a null character\n",
+                "offset *{3:X} == {4:X}, has no terminating null character\n",
                 SectionName, StartOffset, Index, OffOff, StrOff);
           });
       Success = false;
